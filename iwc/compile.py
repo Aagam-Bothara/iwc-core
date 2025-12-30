@@ -5,12 +5,12 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 import yaml
+from importlib.metadata import version as _pkg_version
 
 from iwc.arrival import arrival_fixed_step, arrival_poisson
-from importlib.metadata import version as _pkg_version
 
 
 # -------------------------
@@ -34,7 +34,13 @@ def _canonical_json_line(obj: dict[str, Any]) -> str:
     return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def _arrival_times(n: int, arrival: str, arrival_step_ms: int, rate_rps: Optional[float], seed: Optional[int]) -> list[int]:
+def _arrival_times(
+    n: int,
+    arrival: str,
+    arrival_step_ms: int,
+    rate_rps: Optional[float],
+    seed: Optional[int],
+) -> list[int]:
     if arrival == "fixed-step":
         return arrival_fixed_step(n, arrival_step_ms)
     if arrival == "poisson":
@@ -57,9 +63,7 @@ def _write_manifest(
     schema_path = repo_root / "schema" / "workload.schema.json"
 
     manifest = {
-        
         "iwc_version": _pkg_version("iwc"),
-
         "compiler": compiler,
         "generated_at_utc": _utc_now_iso(),
         "input": {"path": str(input_path), "sha256": _sha256_file(input_path)},
@@ -90,30 +94,45 @@ class SimpleJsonConfig:
     seed: Optional[int] = None           # for poisson randomness
 
 
-def _load_simple_json(path: Path) -> list[str]:
+def _load_simple_json(path: Path) -> list[dict[str, Any]]:
+    """
+    Accepts:
+      - ["prompt1", "prompt2", ...]
+      - [{"prompt": "...", "semantic": {...}}, ...]
+    Returns list of rows containing:
+      - prompt: str
+      - semantic: optional (passthrough)
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
         raise ValueError("simple-json input must be a JSON list")
 
-    prompts: list[str] = []
+    rows: list[dict[str, Any]] = []
     for i, item in enumerate(data):
         if isinstance(item, str):
             prompt = item
+            row: dict[str, Any] = {"prompt": prompt}
         elif isinstance(item, dict) and isinstance(item.get("prompt"), str):
-            prompt = item["prompt"]
+            row = dict(item)  # shallow copy
+            prompt = row["prompt"]
         else:
             raise ValueError(
                 f"invalid item at index {i}: expected string or object with 'prompt' string"
             )
 
-        if not prompt.strip():
+        if not str(prompt).strip():
             raise ValueError(f"empty/blank prompt at index {i}")
-        prompts.append(prompt)
 
-    if not prompts:
+        cleaned: dict[str, Any] = {"prompt": str(prompt)}
+        if "semantic" in row:
+            cleaned["semantic"] = row["semantic"]
+
+        rows.append(cleaned)
+
+    if not rows:
         raise ValueError("input dataset contains 0 prompts")
 
-    return prompts
+    return rows
 
 
 def compile_simple_json(
@@ -122,24 +141,27 @@ def compile_simple_json(
     manifest_path: Path,
     cfg: SimpleJsonConfig,
 ) -> None:
-    prompts = _load_simple_json(input_path)
-    n = len(prompts)
+    rows = _load_simple_json(input_path)
+    n = len(rows)
 
     arrivals_ms = _arrival_times(n, cfg.arrival, cfg.arrival_step_ms, cfg.rate_rps, cfg.seed)
     arrival_span_ms = int(max(arrivals_ms) - min(arrivals_ms)) if arrivals_ms else 0
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
-        for idx, (prompt, at_ms) in enumerate(zip(prompts, arrivals_ms), start=1):
+        for idx, (row, at_ms) in enumerate(zip(rows, arrivals_ms), start=1):
             req = {
                 "request_id": f"req-{idx:06d}",
-                "prompt": prompt,
+                "prompt": row["prompt"],
                 "max_output_tokens": int(cfg.max_output_tokens),
                 "arrival_time_ms": int(at_ms),
                 "temperature": float(cfg.temperature),
                 "top_p": float(cfg.top_p),
                 "streaming": bool(cfg.streaming),
             }
+            if "semantic" in row and row["semantic"] is not None:
+                req["semantic"] = row["semantic"]
+
             f.write(_canonical_json_line(req) + "\n")
 
     _write_manifest(
@@ -200,7 +222,7 @@ def _extract_sharegpt_turns(obj: dict[str, Any]) -> list[tuple[str, str]]:
 
     if isinstance(obj.get("conversations"), list):
         conv = obj["conversations"]
-        for i, m in enumerate(conv):
+        for m in conv:
             if not isinstance(m, dict):
                 continue
             frm = m.get("from")
@@ -220,7 +242,7 @@ def _extract_sharegpt_turns(obj: dict[str, Any]) -> list[tuple[str, str]]:
 
     if isinstance(obj.get("messages"), list):
         msgs = obj["messages"]
-        for i, m in enumerate(msgs):
+        for m in msgs:
             if not isinstance(m, dict):
                 continue
             role = m.get("role")
@@ -263,7 +285,7 @@ def compile_sharegpt(
     prompts: list[str] = []
     skipped = 0
 
-    for idx, obj in enumerate(data):
+    for obj in data:
         if not isinstance(obj, dict):
             skipped += 1
             continue
@@ -293,6 +315,13 @@ def compile_sharegpt(
                 "top_p": float(cfg.top_p),
                 "streaming": bool(cfg.streaming),
             }
+
+            # Deterministic semantic defaults
+            if cfg.mode == "session":
+                req["semantic"] = {"task": "chat", "tags": ["session"]}
+            else:
+                req["semantic"] = {"task": "chat"}
+
             f.write(_canonical_json_line(req) + "\n")
 
     _write_manifest(
