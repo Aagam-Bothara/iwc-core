@@ -2,6 +2,8 @@ import argparse
 import json
 from pathlib import Path
 from iwc.report import build_report, format_report
+from iwc.report import build_report, format_report, report_to_dict
+
 
 
 import jsonschema
@@ -15,6 +17,16 @@ from iwc.compile import (
     compile_sharegpt,
 )
 
+def cmd_report(args: argparse.Namespace) -> None:
+    r = build_report(Path(args.input))
+
+    if args.format == "text":
+        print(format_report(r, top_k_tags=args.top_k_tags))
+        return
+
+    # json
+    obj = report_to_dict(r, top_k_tags=args.top_k_tags)
+    print(json.dumps(obj, indent=2, sort_keys=True))
 
 def load_schema(schema_path: Path) -> dict:
     return json.loads(schema_path.read_text(encoding="utf-8"))
@@ -51,9 +63,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
         else:
             validate_jsonl(path, schema)
             print(f"OK  {path}")
-def cmd_report(args: argparse.Namespace) -> None:
-    r = build_report(Path(args.input))
-    print(format_report(r, top_k_tags=args.top_k_tags))
+
 
 
 def cmd_compile_simple_json(args: argparse.Namespace) -> None:
@@ -160,6 +170,12 @@ def main() -> None:
     p_val = sub.add_parser("validate", help="Validate workload JSONL against schema.")
     p_val.add_argument("paths", nargs="+")
     p_val.set_defaults(func=cmd_validate)
+    p_rep = sub.add_parser("report", help="Summarize a workload JSONL (text or json).")
+    p_rep.add_argument("--input", required=True)
+    p_rep.add_argument("--format", choices=["text", "json"], default="text")
+    p_rep.add_argument("--top-k-tags", type=int, default=10)
+    p_rep.set_defaults(func=cmd_report)
+
 
     # --------------------
     # export
@@ -175,12 +191,7 @@ def main() -> None:
     p_ai.add_argument("--source-manifest", default=None, help="Compile manifest YAML to link for provenance.")
     p_ai.add_argument("--time-mode", choices=["timestamp", "delay"], default="timestamp")
     # --------------------
-    # report
-    # --------------------
-    p_rep = sub.add_parser("report", help="Summarize a canonical workload JSONL (basic stats + semantic breakdown).")
-    p_rep.add_argument("--input", required=True, help="Path to canonical workload JSONL.")
-    p_rep.add_argument("--top-k-tags", type=int, default=10, help="How many tags to show.")
-    p_rep.set_defaults(func=cmd_report)
+
     args = parser.parse_args()
     args.func(args)
 

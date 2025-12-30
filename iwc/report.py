@@ -6,6 +6,46 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional, Tuple
 
+def report_to_dict(r: WorkloadReport, *, top_k_tags: int = 10) -> dict[str, Any]:
+    return {
+        "num_requests": r.num_requests,
+        "arrival_time_ms": {
+            "min": r.min_arrival_ms,
+            "max": r.max_arrival_ms,
+            "span": r.arrival_span_ms,
+        },
+        "coverage": {
+            "semantic_present": r.semantic_present,
+            "semantic_present_pct": _pct(r.semantic_present, r.num_requests),
+            "streaming_true": r.streaming_true,
+            "streaming_false": r.streaming_false,
+            "session_id_present": r.session_id_present,
+            "session_id_present_pct": _pct(r.session_id_present, r.num_requests),
+            "turn_id_present": r.turn_id_present,
+            "turn_id_present_pct": _pct(r.turn_id_present, r.num_requests),
+        },
+        "max_output_tokens": {
+            "min": r.mot_min,
+            "avg": r.mot_avg,
+            "p50": r.mot_p50,
+            "p90": r.mot_p90,
+            "p99": r.mot_p99,
+            "max": r.mot_max,
+        },
+        "prompt_chars": {
+            "min": r.prompt_chars_min,
+            "avg": r.prompt_chars_avg,
+            "p50": r.prompt_chars_p50,
+            "p90": r.prompt_chars_p90,
+            "p99": r.prompt_chars_p99,
+            "max": r.prompt_chars_max,
+        },
+        "semantic": {
+            "task_counts": dict(r.task_counts),
+            "top_tags": [{"tag": k, "count": v} for k, v in r.tag_counts.most_common(top_k_tags)],
+        },
+        "prompt_format_counts": dict(r.prompt_format_counts),
+    }
 
 def read_jsonl(path: Path) -> Iterator[Dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
