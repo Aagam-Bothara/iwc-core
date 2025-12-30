@@ -1,0 +1,5 @@
+{"request_id":"d1","prompt":"Summarize this: LLMs are changing software.","max_output_tokens":64,"arrival_time_ms":0,"temperature":0.0,"top_p":1.0,"streaming":false,"semantic":{"task":"summarization","difficulty":"low","tags":["news"]}}
+{"request_id":"d2","prompt":"What is 2+2?","max_output_tokens":8,"arrival_time_ms":100,"temperature":0.0,"top_p":1.0,"streaming":false,"semantic":{"task":"qa","difficulty":"low","tags":["math"]}}
+{"request_id":"d3","prompt":"Write a Python function that reverses a string.","max_output_tokens":64,"arrival_time_ms":200,"temperature":0.0,"top_p":1.0,"streaming":false,"semantic":{"task":"code","difficulty":"medium","tags":["python"]}}
+{"request_id":"d4","prompt":"Translate to French: Hello, how are you?","max_output_tokens":32,"arrival_time_ms":300,"temperature":0.0,"top_p":1.0,"streaming":false,"semantic":{"task":"translation","difficulty":"low"}}
+{"request_id":"d5","prompt":"Solve: If x+3=10, what is x? Explain.","max_output_tokens":64,"arrival_time_ms":400,"temperature":0.0,"top_p":1.0,"streaming":false,"semantic":{"task":"reasoning","difficulty":"medium","tags":["algebra"]}}
