@@ -72,5 +72,28 @@ A workload is a JSONL file. Each line is one request object.
 
 If an adapter cannot produce timestamps required by a metric definition, it MUST mark the metric as unsupported rather than approximating silently.
 
+## semantic (optional)
+
+IWC supports optional semantic metadata on each request to preserve workload intent across compilation and export.
+
+### Schema
+- `semantic.task` (enum): one of
+  - `chat`, `qa`, `summarization`, `reasoning`, `classification`, `code`, `translation`, `other`
+- `semantic.difficulty` (enum, optional): `low`, `medium`, `high`
+- `semantic.tags` (optional): list of free-form strings
+
+### Example
+```json
+{
+  "request_id": "r42",
+  "prompt": "Summarize the following text...",
+  "max_output_tokens": 128,
+  "arrival_time_ms": 1200,
+  "semantic": {
+    "task": "summarization",
+    "difficulty": "medium",
+    "tags": ["news", "long_context"]
+  }
+}
 
 
