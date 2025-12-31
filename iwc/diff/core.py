@@ -175,3 +175,56 @@ def diff_to_dict(d: SummaryDiff, a_label: str = "A", b_label: str = "B") -> Dict
             for r in d.rows
         ],
     }
+def check_regressions(
+    d: SummaryDiff,
+    burstiness_delta: float | None = None,
+    prefill_p50_delta: float | None = None,
+    reuse_delta: float | None = None,
+    prompt_p50_delta: float | None = None,
+    prompt_p90_delta: float | None = None,
+) -> List[str]:
+    """
+    Returns a list of human-readable regression strings.
+    If empty -> OK.
+    All checks are absolute deltas |B-A|.
+    """
+    msgs: List[str] = []
+
+    a = d.a
+    b = d.b
+
+    def abs_delta(xa: float, xb: float) -> float | None:
+        if _is_nan(xa) or _is_nan(xb):
+            return None
+        return abs(xb - xa)
+
+    # Burstiness CV
+    if burstiness_delta is not None:
+        v = abs_delta(a.arrivals.burstiness_cv, b.arrivals.burstiness_cv)
+        if v is not None and v > burstiness_delta:
+            msgs.append(f"Burstiness CV changed by {v:.3f} (> {burstiness_delta:.3f})")
+
+    # Prefill dominance P50
+    if prefill_p50_delta is not None:
+        v = abs_delta(a.prefill_dominance.p50, b.prefill_dominance.p50)
+        if v is not None and v > prefill_p50_delta:
+            msgs.append(f"Prefill dominance P50 changed by {v:.3f} (> {prefill_p50_delta:.3f})")
+
+    # Reuse (tokens)
+    if reuse_delta is not None:
+        v = abs_delta(a.sessions.prompt_reuse_ratio_tokens, b.sessions.prompt_reuse_ratio_tokens)
+        if v is not None and v > reuse_delta:
+            msgs.append(f"Prompt reuse (tokens) changed by {v:.3f} (> {reuse_delta:.3f})")
+
+    # Prompt tokens P50/P90
+    if prompt_p50_delta is not None:
+        v = abs_delta(a.prompt_tokens.p50, b.prompt_tokens.p50)
+        if v is not None and v > prompt_p50_delta:
+            msgs.append(f"Prompt tokens P50 changed by {v:.1f} (> {prompt_p50_delta:.1f})")
+
+    if prompt_p90_delta is not None:
+        v = abs_delta(a.prompt_tokens.p90, b.prompt_tokens.p90)
+        if v is not None and v > prompt_p90_delta:
+            msgs.append(f"Prompt tokens P90 changed by {v:.1f} (> {prompt_p90_delta:.1f})")
+
+    return msgs
