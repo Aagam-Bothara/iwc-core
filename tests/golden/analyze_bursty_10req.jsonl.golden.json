@@ -1,0 +1,49 @@
+{
+  "arrivals": {
+    "burstiness_cv": 2.9999999999999996,
+    "duration_s": 2.0,
+    "interarrival_ms": {
+      "p50": 0.0,
+      "p90": 400.00000000000034,
+      "p99": 1839.9999999999998
+    },
+    "mean_rps": 5.0,
+    "pattern": "bursty / interactive-like",
+    "peak_rps_1s": 5.0
+  },
+  "max_output_tokens": {
+    "mean": 8.0,
+    "p90": 8.0
+  },
+  "prefill_dominance": {
+    "p50": 0.42857142857142855,
+    "p90": 0.43238095238095237
+  },
+  "prompt_output_ratio": {
+    "mean": 0.7625
+  },
+  "prompt_tokens": {
+    "mean": 6.1,
+    "p50": 6.0,
+    "p90": 6.1,
+    "p99": 6.91
+  },
+  "requests": 10,
+  "sessions": {
+    "avg_turns_per_session": null,
+    "prompt_reuse_ratio_tokens": null,
+    "prompt_token_growth": {
+      "p50": null,
+      "p90": null
+    },
+    "prompt_tokens_by_turn": {
+      "p50": null,
+      "p90": null
+    },
+    "sessions_detected": 0,
+    "turns_per_session": {
+      "p90": null
+    }
+  },
+  "tokenizer_used": "tiktoken:gpt-4o-mini"
+}

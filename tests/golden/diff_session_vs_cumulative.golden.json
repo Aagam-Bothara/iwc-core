@@ -1,0 +1,135 @@
+{
+  "a_label": "/home/cc/iwc/examples/session_chat_5turns.jsonl",
+  "b_label": "/home/cc/iwc/examples/session_chat_5turns_cumulative.jsonl",
+  "metrics": [
+    {
+      "a": "tiktoken:gpt-4o-mini",
+      "b": "tiktoken:gpt-4o-mini",
+      "delta": "",
+      "metric": "Tokenizer"
+    },
+    {
+      "a": "5",
+      "b": "5",
+      "delta": "+0",
+      "metric": "Requests"
+    },
+    {
+      "a": "7",
+      "b": "52",
+      "delta": "+45",
+      "metric": "Prompt tokens P50"
+    },
+    {
+      "a": "10",
+      "b": "76",
+      "delta": "+66",
+      "metric": "Prompt tokens P90"
+    },
+    {
+      "a": "12",
+      "b": "80",
+      "delta": "+69",
+      "metric": "Prompt tokens P99"
+    },
+    {
+      "a": "29",
+      "b": "29",
+      "delta": "+0",
+      "metric": "Max output cap P90"
+    },
+    {
+      "a": "0.238",
+      "b": "0.739",
+      "delta": "+0.501",
+      "metric": "Prefill dominance P50"
+    },
+    {
+      "a": "0.389",
+      "b": "0.854",
+      "delta": "+0.465",
+      "metric": "Prefill dominance P90"
+    },
+    {
+      "a": "2.00",
+      "b": "2.00",
+      "delta": "+0.00",
+      "metric": "Duration (s)"
+    },
+    {
+      "a": "2.50",
+      "b": "2.50",
+      "delta": "+0.00",
+      "metric": "Mean RPS"
+    },
+    {
+      "a": "2",
+      "b": "2",
+      "delta": "+0",
+      "metric": "Peak reqs (1s bin)"
+    },
+    {
+      "a": "500",
+      "b": "500",
+      "delta": "+0",
+      "metric": "Inter-arrival ms P50"
+    },
+    {
+      "a": "500",
+      "b": "500",
+      "delta": "+0",
+      "metric": "Inter-arrival ms P90"
+    },
+    {
+      "a": "0.00",
+      "b": "0.00",
+      "delta": "+0.00",
+      "metric": "Burstiness (CV)"
+    },
+    {
+      "a": "1",
+      "b": "1",
+      "delta": "+0",
+      "metric": "Sessions detected"
+    },
+    {
+      "a": "5",
+      "b": "5",
+      "delta": "+0",
+      "metric": "Turns/session P90"
+    },
+    {
+      "a": "0.000",
+      "b": "0.713",
+      "delta": "+0.713",
+      "metric": "Prompt reuse (tokens)"
+    },
+    {
+      "a": "7",
+      "b": "52",
+      "delta": "+45",
+      "metric": "Prompt tokens/turn P50"
+    },
+    {
+      "a": "10",
+      "b": "76",
+      "delta": "+66",
+      "metric": "Prompt tokens/turn P90"
+    },
+    {
+      "a": "-2",
+      "b": "16",
+      "delta": "+18",
+      "metric": "\u0394tokens/turn P50"
+    },
+    {
+      "a": "1",
+      "b": "16",
+      "delta": "+15",
+      "metric": "\u0394tokens/turn P90"
+    }
+  ],
+  "primary_class_a": "batch/offline",
+  "primary_class_b": "interactive-chat (prefill-heavy)",
+  "shift": "more prefill-heavy, higher reuse"
+}
