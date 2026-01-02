@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IWC Target Profile v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["engine", "model", "hardware", "vllm"],
+  "properties": {
+    "engine": { "type": "string", "enum": ["vllm"] },
+    "model": { "type": "string", "minLength": 1 },
+
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gpu_model", "gpu_memory_gb"],
+      "properties": {
+        "gpu_model": { "type": "string", "minLength": 1 },
+        "gpu_memory_gb": { "type": "number", "minimum": 1 }
+      }
+    },
+
+    "vllm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_num_seqs", "max_num_batched_tokens", "dtype"],
+      "properties": {
+        "max_num_seqs": { "type": "integer", "minimum": 1 },
+        "max_num_batched_tokens": { "type": "integer", "minimum": 1 },
+        "dtype": { "type": "string", "enum": ["fp16", "bf16", "fp8", "int8"] },
+        "tensor_parallel": { "type": "integer", "minimum": 1, "default": 1 },
+        "pipeline_parallel": { "type": "integer", "minimum": 1, "default": 1 },
+        "kv_cache_mode": { "type": "string", "enum": ["paged", "static"], "default": "paged" }
+      }
+    }
+  }
+}

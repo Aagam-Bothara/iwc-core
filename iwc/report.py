@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional, Tuple
 
+# NEW: prompt token counting helper (you must implement this in iwc/analyze/tokenizer.py)
+from iwc.analyze.tokenizer import count_tokens_for_prompt
+
 
 def report_to_dict(r: "WorkloadReport", *, top_k_tags: int = 10) -> dict[str, Any]:
     return {
@@ -48,6 +51,15 @@ def report_to_dict(r: "WorkloadReport", *, top_k_tags: int = 10) -> dict[str, An
             "p90": r.prompt_chars_p90,
             "p99": r.prompt_chars_p99,
             "max": r.prompt_chars_max,
+        },
+        # NEW
+        "prompt_tokens": {
+            "min": r.prompt_tokens_min,
+            "avg": r.prompt_tokens_avg,
+            "p50": r.prompt_tokens_p50,
+            "p90": r.prompt_tokens_p90,
+            "p99": r.prompt_tokens_p99,
+            "max": r.prompt_tokens_max,
         },
         "semantic": {
             "task_counts": dict(r.task_counts),
@@ -111,6 +123,14 @@ class WorkloadReport:
     prompt_chars_p99: Optional[int]
     prompt_chars_max: Optional[int]
 
+    # NEW
+    prompt_tokens_min: Optional[int]
+    prompt_tokens_avg: Optional[float]
+    prompt_tokens_p50: Optional[int]
+    prompt_tokens_p90: Optional[int]
+    prompt_tokens_p99: Optional[int]
+    prompt_tokens_max: Optional[int]
+
     task_counts: Counter[str]
     difficulty_counts: Counter[str]
     tag_counts: Counter[str]
@@ -137,6 +157,7 @@ def build_report(path: Path) -> WorkloadReport:
     arrivals: list[int] = []
     max_out: list[int] = []
     prompt_chars: list[int] = []
+    prompt_tokens: list[int] = []  # NEW
 
     task_counts: Counter[str] = Counter()
     difficulty_counts: Counter[str] = Counter()
@@ -199,6 +220,25 @@ def build_report(path: Path) -> WorkloadReport:
         if isinstance(prompt, str):
             prompt_chars.append(len(prompt))
 
+            # Token count: use prompt_format if present, else assume raw
+            pf2 = pf if (isinstance(pf, str) and pf.strip()) else "raw"
+            try:
+                pt = count_tokens_for_prompt(prompt, prompt_format=str(pf2))
+                prompt_tokens.append(int(pt))
+            except Exception:
+                pass
+
+
+            # NEW: token count (assume raw if prompt_format missing)
+            pf2 = pf if (isinstance(pf, str) and pf.strip()) else "raw"
+            try:
+                pt = count_tokens_for_prompt(prompt, prompt_format=str(pf2))
+                if isinstance(pt, int):
+                    prompt_tokens.append(pt)
+            except Exception:
+                # robust: keep report working even if tokenizer fails on some prompt formats
+                pass
+
         # semantic (optional)
         sem = req.get("semantic")
         if isinstance(sem, dict):
@@ -249,6 +289,7 @@ def build_report(path: Path) -> WorkloadReport:
 
     mot_min, mot_avg, mot_p50, mot_p90, mot_p99, mot_max = stats(max_out)
     pc_min, pc_avg, pc_p50, pc_p90, pc_p99, pc_max = stats(prompt_chars)
+    pt_min, pt_avg, pt_p50, pt_p90, pt_p99, pt_max = stats(prompt_tokens)  # NEW
 
     warnings: list[str] = []
     if n > 0:
@@ -258,19 +299,19 @@ def build_report(path: Path) -> WorkloadReport:
             )
         missing_sem = n - semantic_present
         if missing_sem > 0:
-            warnings.append(
-                f"semantic missing in {missing_sem}/{n} ({round(_pct(missing_sem, n), 2)}%)"
-            )
+            warnings.append(f"semantic missing in {missing_sem}/{n} ({round(_pct(missing_sem, n), 2)}%)")
         missing_task = n - task_present
         if missing_task > 0:
-            warnings.append(
-                f"semantic.task missing in {missing_task}/{n} ({round(_pct(missing_task, n), 2)}%)"
-            )
+            warnings.append(f"semantic.task missing in {missing_task}/{n} ({round(_pct(missing_task, n), 2)}%)")
         missing_diff = n - difficulty_present
         if missing_diff > 0:
             warnings.append(
                 f"semantic.difficulty missing in {missing_diff}/{n} ({round(_pct(missing_diff, n), 2)}%)"
             )
+
+        # NEW: token stat missing warning (helps later predict correctness)
+        if prompt_chars and not prompt_tokens:
+            warnings.append("prompt_tokens could not be computed (tokenizer unavailable or failed)")
 
     return WorkloadReport(
         num_requests=n,
@@ -289,6 +330,12 @@ def build_report(path: Path) -> WorkloadReport:
         prompt_chars_p90=pc_p90,
         prompt_chars_p99=pc_p99,
         prompt_chars_max=pc_max,
+        prompt_tokens_min=pt_min,
+        prompt_tokens_avg=pt_avg,
+        prompt_tokens_p50=pt_p50,
+        prompt_tokens_p90=pt_p90,
+        prompt_tokens_p99=pt_p99,
+        prompt_tokens_max=pt_max,
         task_counts=task_counts,
         difficulty_counts=difficulty_counts,
         tag_counts=tag_counts,
@@ -323,22 +370,16 @@ def format_report(r: WorkloadReport, *, top_k_tags: int = 10) -> str:
     lines.append("")
     lines.append("coverage:")
     lines.append(
-        f"  semantic present: {r.semantic_present}/{r.num_requests} "
-        f"({round(_pct(r.semantic_present, r.num_requests), 2)}%)"
+        f"  semantic present: {r.semantic_present}/{r.num_requests} ({round(_pct(r.semantic_present, r.num_requests), 2)}%)"
     )
     lines.append(f"  streaming: true={r.streaming_true}  false={r.streaming_false}")
     lines.append(
-        f"  session_id present: {r.session_id_present}/{r.num_requests} "
-        f"({round(_pct(r.session_id_present, r.num_requests), 2)}%)"
+        f"  session_id present: {r.session_id_present}/{r.num_requests} ({round(_pct(r.session_id_present, r.num_requests), 2)}%)"
     )
     lines.append(
-        f"  turn_id present: {r.turn_id_present}/{r.num_requests} "
-        f"({round(_pct(r.turn_id_present, r.num_requests), 2)}%)"
+        f"  turn_id present: {r.turn_id_present}/{r.num_requests} ({round(_pct(r.turn_id_present, r.num_requests), 2)}%)"
     )
-    lines.append(
-        f"  tags present: {r.tags_present}/{r.num_requests} "
-        f"({round(_pct(r.tags_present, r.num_requests), 2)}%)"
-    )
+    lines.append(f"  tags present: {r.tags_present}/{r.num_requests} ({round(_pct(r.tags_present, r.num_requests), 2)}%)")
 
     lines.append("")
     lines.append("max_output_tokens:")
@@ -352,6 +393,14 @@ def format_report(r: WorkloadReport, *, top_k_tags: int = 10) -> str:
     lines.append(
         f"  min={r.prompt_chars_min}  avg={None if r.prompt_chars_avg is None else round(r.prompt_chars_avg, 2)}  "
         f"p50={r.prompt_chars_p50}  p90={r.prompt_chars_p90}  p99={r.prompt_chars_p99}  max={r.prompt_chars_max}"
+    )
+
+    # NEW
+    lines.append("")
+    lines.append("prompt length (tokens):")
+    lines.append(
+        f"  min={r.prompt_tokens_min}  avg={None if r.prompt_tokens_avg is None else round(r.prompt_tokens_avg, 2)}  "
+        f"p50={r.prompt_tokens_p50}  p90={r.prompt_tokens_p90}  p99={r.prompt_tokens_p99}  max={r.prompt_tokens_max}"
     )
 
     # semantic.task distribution

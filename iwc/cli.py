@@ -3,8 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from iwc.profile import load_profile, validate_profile
+
 
 import jsonschema
+from iwc.fingerprint import build_fingerprint_from_report_json
+
 
 from iwc.analyze.cli import add_analyze_subcommand
 from iwc.compile import (
@@ -62,6 +66,25 @@ def cmd_report(args: argparse.Namespace) -> None:
     obj = report_to_dict(r, top_k_tags=args.top_k_tags)
     print(json.dumps(obj, indent=2, sort_keys=True))
 
+def cmd_fingerprint(args: argparse.Namespace) -> None:
+    # Reuse report pipeline (already stable + tested)
+    r = build_report(Path(args.input))
+    rj = report_to_dict(r, top_k_tags=0)  # tags not needed for fingerprint
+
+    fp, _ = build_fingerprint_from_report_json(rj)
+
+    s = json.dumps(fp, indent=2, sort_keys=True)
+    if args.out:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(s + "\n", encoding="utf-8")
+    else:
+        print(s)
+def cmd_profile_validate(args: argparse.Namespace) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    prof = load_profile(Path(args.profile))
+    validate_profile(prof, repo_root=repo_root)
+    print(f"OK  {args.profile}")
 
 def load_schema(schema_path: Path) -> dict:
     return json.loads(schema_path.read_text(encoding="utf-8"))
@@ -250,6 +273,12 @@ def main() -> None:
     p_val = sub.add_parser("validate", help="Validate workload JSONL against schema.")
     p_val.add_argument("paths", nargs="+")
     p_val.set_defaults(func=cmd_validate)
+    p_prof = sub.add_parser("profile", help="Target profile utilities.")
+    prof_sub = p_prof.add_subparsers(dest="profile_cmd", required=True)
+
+    p_pv = prof_sub.add_parser("validate", help="Validate a target profile YAML.")
+    p_pv.add_argument("--profile", required=True)
+    p_pv.set_defaults(func=cmd_profile_validate)
 
     # --------------------
     # report
@@ -259,6 +288,13 @@ def main() -> None:
     p_rep.add_argument("--format", choices=["text", "json"], default="text")
     p_rep.add_argument("--top-k-tags", type=int, default=10)
     p_rep.set_defaults(func=cmd_report)
+    # --------------------
+    # fingerprint
+    # --------------------
+    p_fp = sub.add_parser("fingerprint", help="Export a stable workload fingerprint (JSON + deterministic hash).")
+    p_fp.add_argument("--input", required=True, help="Workload JSONL")
+    p_fp.add_argument("--out", default=None, help="Write fingerprint JSON to file (default: stdout)")
+    p_fp.set_defaults(func=cmd_fingerprint)
 
     # --------------------
     # export

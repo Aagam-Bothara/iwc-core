@@ -1,0 +1,33 @@
+{
+  "arrival": {
+    "max_ms": 2000,
+    "min_ms": 0,
+    "span_ms": 2000
+  },
+  "fingerprint_version": "0.2",
+  "session": {
+    "has_sessions": true,
+    "sessions_mismatch_flag": false
+  },
+  "token": {
+    "max_output_tokens": {
+      "p50": 16,
+      "p90": 24,
+      "p99": 24
+    },
+    "prompt_chars": {
+      "p50": 30,
+      "p90": 33,
+      "p99": 33
+    },
+    "prompt_tokens": {
+      "p50": 7,
+      "p90": 12,
+      "p99": 12
+    }
+  },
+  "workload": {
+    "num_requests": 5
+  },
+  "workload_hash": "sha256:9fb3f38814a20fdb28fe4699d2f8ffae7bf68d0f659334066dbb302fcae3f314"
+}

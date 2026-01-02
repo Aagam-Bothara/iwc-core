@@ -1,0 +1,14 @@
+engine: vllm
+model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+
+hardware:
+  gpu_model: NVIDIA A100
+  gpu_memory_gb: 40
+
+vllm:
+  max_num_seqs: 256
+  max_num_batched_tokens: 8192
+  dtype: fp16
+  tensor_parallel: 1
+  pipeline_parallel: 1
+  kv_cache_mode: paged
