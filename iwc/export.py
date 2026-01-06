@@ -57,6 +57,7 @@ class ExportAiperfConfig:
     time_mode: str = "timestamp"           # "timestamp" or "delay"
     role: str = "user"
 
+
 def read_iwc_jsonl(path: Path) -> Iterator[Dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
@@ -111,11 +112,16 @@ def export_aiperf(
 
             at = _require_int("arrival_time_ms", req.get("arrival_time_ms"), min_value=0)
 
-            trace_req = {
+            trace_req: Dict[str, Any] = {
                 "type": "single_turn",
                 "text": prompt,
                 "role": cfg.role,
             }
+
+            # ✅ Keep max_output_tokens when present (matches existing golden tests)
+            mot = req.get("max_output_tokens")
+            if mot is not None:
+                trace_req["max_output_tokens"] = _require_int("max_output_tokens", mot, min_value=1)
 
             if cfg.time_mode == "timestamp":
                 trace_req["timestamp"] = at
