@@ -1,1 +1,7 @@
-{"role":"user","text":"Say hello in one sentence.","timestamp":0,"type":"single_turn"}
+{
+  "role": "user",
+  "text": "Say hello in one sentence.",
+  "timestamp": 0,
+  "type": "single_turn",
+  "max_output_tokens": 32
+}

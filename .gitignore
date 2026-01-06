@@ -9,3 +9,10 @@ build/
 .idea/
 .vscode/
 *.manifest.yaml
+
+# local calibration / eval artifacts (do not commit)
+cal*.json
+eval.json
+eval.txt
+fp.json
+
