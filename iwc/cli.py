@@ -26,12 +26,9 @@ from iwc.compile import (
     compile_jsonl_prompts,
     compile_sharegpt,
 )
-from iwc.compile_alpaca import AlpacaConfig, compile_alpaca
 from iwc.export import ExportAiperfConfig, export_aiperf
 from iwc.labeler.heuristics import label_record
 from iwc.diff.cli import add_diff_subcommand
-from iwc.run_vllm import VllmRunConfig, run_vllm
-from iwc.report_results import build_results_report, format_results_report, report_to_dict
 
 
 # -----------------------------
@@ -512,28 +509,6 @@ def cmd_compile_sharegpt(args: argparse.Namespace) -> None:
     print(f"✓ Manifest: {manifest_path}")
 
 
-def cmd_compile_alpaca(args: argparse.Namespace) -> None:
-    out_path = Path(args.output)
-    manifest_path = Path(args.manifest) if args.manifest else Path(str(out_path) + ".manifest.yaml")
-
-    cfg = AlpacaConfig(
-        max_output_tokens=args.max_output_tokens,
-        max_output_policy=args.max_output_policy,
-        temperature=args.temperature,
-        top_p=args.top_p,
-        streaming=args.streaming,
-        prompt_format=args.prompt_format,
-        arrival=args.arrival,
-        arrival_step_ms=args.arrival_step_ms,
-        rate_rps=args.rate_rps,
-        seed=args.seed,
-    )
-
-    compile_alpaca(Path(args.input), out_path, manifest_path, cfg)
-    print(f"✓ Workload: {args.output}")
-    print(f"✓ Manifest: {manifest_path}")
-
-
 def cmd_export_aiperf(args: argparse.Namespace) -> None:
     manifest_path = Path(args.manifest) if args.manifest else None
     cfg = ExportAiperfConfig(time_mode=args.time_mode)
@@ -547,44 +522,6 @@ def cmd_export_aiperf(args: argparse.Namespace) -> None:
 
     print(f"✓ Trace: {args.output}")
     print(f"✓ Manifest: {mp}")
-
-
-def cmd_run_vllm(args: argparse.Namespace) -> None:
-    cfg = VllmRunConfig(
-        base_url=args.base_url,
-        model=args.model,
-        out_path=Path(args.out),
-        concurrency=args.concurrency,
-        timeout_s=args.timeout_s,
-        max_retries=args.max_retries,
-    )
-
-    exit_code = run_vllm(Path(args.workload), cfg)
-
-    if exit_code == 0:
-        print(f"✓ All requests succeeded -> {args.out}")
-    elif exit_code == 2:
-        print(f"⚠ Some requests failed -> {args.out}")
-    else:
-        print(f"✗ All requests failed -> {args.out}")
-
-    raise SystemExit(exit_code)
-
-
-def cmd_report_results(args: argparse.Namespace) -> None:
-    """Generate aggregate report from runner results."""
-    report = build_results_report(Path(args.input))
-
-    if args.format == "json":
-        output = json.dumps(report_to_dict(report), indent=2, sort_keys=True)
-    else:
-        output = format_results_report(report)
-
-    if args.output:
-        Path(args.output).write_text(output + "\n", encoding="utf-8")
-        print(f"✓ Report saved to {args.output}")
-    else:
-        print(output)
 
 
 # --------------------
@@ -654,44 +591,6 @@ def main() -> None:
     p_jl.add_argument("--rate-rps", type=float, default=None)
     p_jl.add_argument("--seed", type=int, default=None)
     p_jl.set_defaults(func=cmd_compile_jsonl_prompts)
-
-    p_alp = comp_sub.add_parser("alpaca", help="Compile Alpaca-format JSON")
-    p_alp.add_argument("--input", required=True)
-    p_alp.add_argument("--output", required=True)
-    p_alp.add_argument("--manifest", default=None)
-    p_alp.add_argument("--prompt-format", choices=["raw", "chatml", "openai_messages"], default="raw")
-    p_alp.add_argument("--max-output-tokens", type=int, default=128)
-    p_alp.add_argument("--max-output-policy", choices=["fixed", "from_dataset", "clamp"], default="fixed", help="Policy for max_output_tokens (default: fixed)")
-    p_alp.add_argument("--temperature", type=float, default=0.0)
-    p_alp.add_argument("--top-p", type=float, default=1.0)
-    p_alp.add_argument("--streaming", action="store_true")
-    p_alp.add_argument("--arrival", choices=["fixed-step", "poisson"], default="fixed-step")
-    p_alp.add_argument("--arrival-step-ms", type=int, default=100)
-    p_alp.add_argument("--rate-rps", type=float, default=None)
-    p_alp.add_argument("--seed", type=int, default=None)
-    p_alp.set_defaults(func=cmd_compile_alpaca)
-
-    # run
-    p_run = sub.add_parser("run", help="Run a workload against an inference server")
-    run_sub = p_run.add_subparsers(dest="backend", required=True, title="backends")
-
-    # run vllm
-    p_run_vllm = run_sub.add_parser("vllm", help="Run against a vLLM server")
-    p_run_vllm.add_argument("--workload", required=True, help="Path to workload JSONL file")
-    p_run_vllm.add_argument("--base-url", required=True, help="Base URL of vLLM server (e.g., http://localhost:8000)")
-    p_run_vllm.add_argument("--model", required=True, help="Model name to use for requests")
-    p_run_vllm.add_argument("--out", required=True, help="Output JSONL file for results")
-    p_run_vllm.add_argument("--concurrency", type=int, default=4, help="Maximum concurrent requests (default: 4)")
-    p_run_vllm.add_argument("--timeout-s", type=float, default=60.0, help="Request timeout in seconds (default: 60.0)")
-    p_run_vllm.add_argument("--max-retries", type=int, default=2, help="Maximum retries per request (default: 2)")
-    p_run_vllm.set_defaults(func=cmd_run_vllm)
-
-    # report-results
-    p_report_res = sub.add_parser("report-results", help="Generate aggregate statistics from runner results")
-    p_report_res.add_argument("--input", required=True, help="Path to results JSONL file")
-    p_report_res.add_argument("--output", default=None, help="Output file (default: stdout)")
-    p_report_res.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
-    p_report_res.set_defaults(func=cmd_report_results)
 
     # validate
     p_val = sub.add_parser("validate", help="Validate workload JSONL against schema")

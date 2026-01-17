@@ -9,7 +9,6 @@ description = "Inference Workload Compiler: compile arbitrary datasets into a ca
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "aiohttp>=3.9.0",
   "jsonschema>=4.22.0",
   "pyyaml>=6.0.1",
 ]
