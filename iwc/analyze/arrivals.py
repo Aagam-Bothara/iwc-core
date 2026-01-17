@@ -18,6 +18,14 @@ class ArrivalStats:
 
 
 def analyze_arrivals(arrival_ms: List[int]) -> ArrivalStats:
+    """
+    Analyze arrival timestamps (ms offsets).
+
+    Edge-case policy (trust-preserving):
+      - n == 0: everything unknown / NaN
+      - n == 1: duration=0, mean_rps=n/a, interarrivals n/a, burstiness n/a, pattern="unknown"
+      - duration_ms == 0 with n >= 2 (identical timestamps): treat as unknown (avoid division-by-zero nonsense)
+    """
     if not arrival_ms:
         return ArrivalStats(
             n=0,
@@ -29,12 +37,8 @@ def analyze_arrivals(arrival_ms: List[int]) -> ArrivalStats:
             pattern="unknown",
         )
 
-    ts = sorted(arrival_ms)
+    ts = sorted(int(x) for x in arrival_ms)
     n = len(ts)
-    duration_ms = max(0, ts[-1] - ts[0])
-    duration_s = max(1e-9, duration_ms / 1000.0)
-
-    mean_rps = n / duration_s
 
     # Inter-arrival deltas
     deltas = [ts[i] - ts[i - 1] for i in range(1, n)]
@@ -42,14 +46,47 @@ def analyze_arrivals(arrival_ms: List[int]) -> ArrivalStats:
     inter = DistSummary.from_list(deltas_f)
     cv = coeff_var(deltas_f) if deltas_f else float("nan")
 
-    # Peak RPS in 1-second buckets
-    # bucket = floor((t - t0)/1000)
+    # Peak RPS in 1-second buckets (bucketed counts, not sliding window)
     t0 = ts[0]
-    counts = {}
+    counts: dict[int, int] = {}
     for t in ts:
         b = (t - t0) // 1000
         counts[b] = counts.get(b, 0) + 1
     peak = float(max(counts.values())) if counts else float("nan")
+
+    # Duration + mean RPS (guard against nonsense)
+    duration_ms = max(0, ts[-1] - ts[0])
+    duration_s = duration_ms / 1000.0
+
+    if n < 2:
+        # single point: RPS / burstiness undefined
+        mean_rps = float("nan")
+        pattern = "unknown"
+        return ArrivalStats(
+            n=n,
+            duration_s=0.0,
+            mean_rps=mean_rps,
+            peak_rps_1s=peak,
+            interarrival_ms=inter,
+            burstiness_cv=float("nan"),
+            pattern=pattern,
+        )
+
+    if duration_ms == 0:
+        # multiple timestamps but all identical -> cannot define a rate reliably
+        mean_rps = float("nan")
+        pattern = "unknown"
+        return ArrivalStats(
+            n=n,
+            duration_s=0.0,
+            mean_rps=mean_rps,
+            peak_rps_1s=peak,
+            interarrival_ms=inter,
+            burstiness_cv=cv,
+            pattern=pattern,
+        )
+
+    mean_rps = n / duration_s
 
     # Simple interpretation
     if cv != cv:  # NaN

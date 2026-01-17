@@ -1,3 +1,4 @@
+# iwc/analyze/summary.py
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -54,7 +55,7 @@ def build_summary(
         if den > 0:
             prefill_scores.append(float(pt) / den)
 
-        arrivals_ms.append(r.arrival_time_ms)
+        arrivals_ms.append(int(r.arrival_time_ms))
 
     prompt_sum = DistSummary.from_list(prompt_lens)
     out_sum = DistSummary.from_list(out_caps)
@@ -97,8 +98,20 @@ def render_summary(s: WorkloadSummary) -> str:
     tags: List[str] = []
     if not _is_nan(s.arrivals.burstiness_cv):
         tags.append("bursty" if s.arrivals.burstiness_cv > 1.5 else "smooth")
+
+    # Multi-turn tag: sessions + turns>=2
+    turns_p90 = s.sessions.turns_per_session.p90
+    is_multiturn = (
+        s.sessions.sessions_detected
+        and not _is_nan(turns_p90)
+        and turns_p90 >= 2
+    )
+    if is_multiturn:
+        tags.append("multi-turn")
+
     if not _is_nan(s.prefill_dominance.p50) and s.prefill_dominance.p50 > 0.65:
         tags.append("prefill-heavy")
+
     if (
         s.sessions.sessions_detected
         and not _is_nan(s.sessions.prompt_reuse_ratio_tokens)
@@ -110,11 +123,7 @@ def render_summary(s: WorkloadSummary) -> str:
 
     # ---- Primary class (single label) ----
     primary = "unknown"
-    if (
-        s.sessions.sessions_detected
-        and not _is_nan(s.sessions.prompt_reuse_ratio_tokens)
-        and s.sessions.prompt_reuse_ratio_tokens > 0.5
-    ):
+    if is_multiturn:
         if not _is_nan(s.prefill_dominance.p50) and s.prefill_dominance.p50 > 0.65:
             primary = "interactive-chat (prefill-heavy)"
         else:
@@ -126,7 +135,6 @@ def render_summary(s: WorkloadSummary) -> str:
     lines.append(f"PRIMARY CLASS       : {primary}")
 
     lines.append("")
-
     lines.append("TOKENS")
     lines.append("-----")
     lines.append(f"Avg prompt tokens  : {fmt(s.prompt_tokens.mean, 2)}")
@@ -145,7 +153,6 @@ def render_summary(s: WorkloadSummary) -> str:
     lines.append("---------------")
     lines.append(f"Duration (s)       : {fmt(s.arrivals.duration_s, 2)}")
     lines.append(f"Mean RPS           : {fmt(s.arrivals.mean_rps, 2)}")
-    # clarified label: bucket count, not sliding-window
     lines.append(f"Peak reqs (1s bin) : {fmt(s.arrivals.peak_rps_1s, 0)}")
     lines.append(
         "Inter-arrival ms P50/P90/P99 : "
@@ -164,7 +171,6 @@ def render_summary(s: WorkloadSummary) -> str:
     lines.append(f"P90 turns/session  : {fmt(s.sessions.turns_per_session.p90, 0)}")
     lines.append(f"Prompt reuse ratio (tokens) : {fmt(s.sessions.prompt_reuse_ratio_tokens, 3)}")
 
-    # Only show context block when sessions exist
     if s.sessions.sessions_detected and s.sessions.sessions_detected > 0:
         lines.append("")
         lines.append("SESSION CONTEXT")

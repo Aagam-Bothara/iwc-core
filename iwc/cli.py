@@ -354,10 +354,7 @@ def cmd_report(args: argparse.Namespace) -> None:
 
 
 def cmd_fingerprint(args: argparse.Namespace) -> int:
-    from pathlib import Path
-    import json
-
-    from iwc.fingerprint import build_fingerprint, build_fingerprint_extended
+    from iwc.fingerprint import build_fingerprint
 
     inp = Path(args.input)
     if not inp.exists():
@@ -368,9 +365,14 @@ def cmd_fingerprint(args: argparse.Namespace) -> int:
     else:
         fp = build_fingerprint(inp)
 
-    print(json.dumps(fp, ensure_ascii=False, indent=2, sort_keys=True))
+    s = json.dumps(fp, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if getattr(args, "out", None):
+        outp = Path(args.out)
+        outp.parent.mkdir(parents=True, exist_ok=True)
+        outp.write_text(s, encoding="utf-8")
+    else:
+        print(s, end="")
     return 0
-
 
 def cmd_profile_validate(args: argparse.Namespace) -> None:
     repo_root = Path(__file__).resolve().parents[1]

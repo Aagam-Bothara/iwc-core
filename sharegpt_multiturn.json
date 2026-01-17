@@ -1,0 +1,13 @@
+[
+  {
+    "id": "demo-1",
+    "conversations": [
+      {"from":"human","value":"Hi"},
+      {"from":"gpt","value":"Hello!"},
+      {"from":"human","value":"Explain KV cache in 1 sentence."},
+      {"from":"gpt","value":"KV cache stores past key/value tensors to speed up autoregressive decoding."},
+      {"from":"human","value":"Now give 2 pros and 1 con."},
+      {"from":"gpt","value":"Pros: faster decoding, lower compute; Con: memory overhead."}
+    ]
+  }
+]

@@ -16,6 +16,9 @@ from iwc.arrival import arrival_fixed_step, arrival_poisson
 # -------------------------
 # Shared helpers
 # -------------------------
+def _role_tag(role: str, cfg: ShareGPTConfig) -> str:
+    return cfg.user_tag if role == "user" else cfg.assistant_tag
+
 def _load_prompts_jsonl(path: Path) -> list[dict[str, Any]]:
     """
     Accepts JSONL where each line is either:
@@ -373,6 +376,18 @@ def _sharegpt_prompt_from_turns(turns: list[tuple[str, str]], cfg: ShareGPTConfi
     raise ValueError(f"unknown sharegpt mode: {cfg.mode}")
 
 
+def _extract_conversation_id(obj: dict[str, Any], idx: int) -> str:
+    """
+    Stable session id per ShareGPT record.
+    Uses common fields if present; otherwise falls back to deterministic index-based id.
+    """
+    raw = obj.get("conversation_id") or obj.get("id") or obj.get("uuid")
+    if raw is None:
+        return f"conv-{idx:06d}"
+    s = str(raw).strip()
+    return s if s else f"conv-{idx:06d}"
+
+
 def compile_sharegpt(
     input_path: Path,
     output_path: Path,
@@ -383,48 +398,96 @@ def compile_sharegpt(
     if not isinstance(data, list):
         raise ValueError("sharegpt input must be a JSON list")
 
-    prompts: list[str] = []
-    skipped = 0
-    req.setdefault("semantic", {"task": "chat", "tags": ["sharegpt"]})
+    requests: list[dict[str, Any]] = []
+    skipped_records = 0
 
-    for obj in data:
+    # Build one request per assistant turn.
+    # Prompt is the transcript up to (and including) the user message that precedes that assistant turn.
+    for rec_idx, obj in enumerate(data, start=1):
         if not isinstance(obj, dict):
-            skipped += 1
+            skipped_records += 1
             continue
+
         turns = _extract_sharegpt_turns(obj)
-        prompt = _sharegpt_prompt_from_turns(turns, cfg)
-        if not prompt.strip():
-            skipped += 1
+        if not turns:
+            skipped_records += 1
             continue
-        prompts.append(prompt)
 
-    if not prompts:
-        raise ValueError("sharegpt input produced 0 prompts (check format / mode)")
+        session_id = _extract_conversation_id(obj, rec_idx)
 
-    n = len(prompts)
+        if cfg.mode == "single-turn":
+            # Keep existing behavior: 1 request per record, first user message.
+            prompt = _sharegpt_prompt_from_turns(turns, cfg)
+            if not prompt.strip():
+                skipped_records += 1
+                continue
+
+            requests.append({
+                "session_id": session_id,  # harmless even in single-turn
+                "prompt": prompt.strip(),
+            })
+            continue
+
+        if cfg.mode != "session":
+            raise ValueError(f"unknown sharegpt mode: {cfg.mode}")
+
+        # Session mode: one request per assistant turn with growing context.
+        transcript_lines: list[str] = []
+        have_user_since_last_assistant = False
+
+        for role, text in turns:
+            text = (text or "").strip()
+            if not text:
+                continue
+
+            tag = _role_tag(role, cfg)
+
+            if role == "user":
+                transcript_lines.append(f"{tag}: {text}")
+                have_user_since_last_assistant = True
+                continue
+
+            # role == assistant
+            # Only emit if we actually have a user turn to respond to.
+            if not have_user_since_last_assistant:
+                # Skip assistant messages that have no preceding user message in our transcript.
+                transcript_lines.append(f"{tag}: {text}")
+                continue
+
+            # Emit request BEFORE appending this assistant message, since the model hasn't generated it yet.
+            prompt = cfg.separator.join(transcript_lines).strip()
+            if prompt:
+                requests.append({
+                    "session_id": session_id,
+                    "prompt": prompt,
+                })
+
+            # Now append assistant text to transcript (for subsequent turns' context growth)
+            transcript_lines.append(f"{tag}: {text}")
+            have_user_since_last_assistant = False
+
+    if not requests:
+        raise ValueError("sharegpt input produced 0 requests (check format / mode)")
+
+    n = len(requests)
     arrivals_ms = _arrival_times(n, cfg.arrival, cfg.arrival_step_ms, cfg.rate_rps, cfg.seed)
     arrival_span_ms = int(max(arrivals_ms) - min(arrivals_ms)) if arrivals_ms else 0
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
-        for i, (prompt, at_ms) in enumerate(zip(prompts, arrivals_ms), start=1):
-            req = {
+        for i, (row, at_ms) in enumerate(zip(requests, arrivals_ms), start=1):
+            req: dict[str, Any] = {
                 "request_id": f"req-{i:06d}",
-                "prompt": prompt,
+                "prompt": row["prompt"],
                 "prompt_format": cfg.prompt_format,
                 "max_output_tokens": int(cfg.max_output_tokens),
                 "arrival_time_ms": int(at_ms),
                 "temperature": float(cfg.temperature),
                 "top_p": float(cfg.top_p),
                 "streaming": bool(cfg.streaming),
+                "session_id": row["session_id"],
+                "semantic": {"task": "chat", "tags": ["sharegpt", "session", "turn-level"]},
             }
-
-            # Deterministic semantic defaults
-            if cfg.mode == "session":
-                req["semantic"] = {"task": "chat", "tags": ["session"]}
-            else:
-                req["semantic"] = {"task": "chat"}
-
             f.write(_canonical_json_line(req) + "\n")
 
     _write_manifest(
@@ -435,8 +498,9 @@ def compile_sharegpt(
         summary={
             "num_requests": n,
             "arrival_span_ms": arrival_span_ms,
-            "skipped_records": skipped,
+            "skipped_records": skipped_records,
             "mode": cfg.mode,
+            "emission": "assistant-turn",
         },
         cfg={
             "mode": cfg.mode,

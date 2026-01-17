@@ -1,0 +1,27 @@
+{
+  "arrival": {
+    "span_ms": 100
+  },
+  "fingerprint_version": "0.2",
+  "semantic": {
+    "difficulty_counts": {},
+    "task_counts": {},
+    "top_tags": []
+  },
+  "token": {
+    "max_output_tokens": {
+      "p50": 128,
+      "p90": 128,
+      "p99": 128
+    },
+    "prompt_tokens": {
+      "p50": 23,
+      "p90": 23,
+      "p99": 23
+    }
+  },
+  "workload": {
+    "num_requests": 2
+  },
+  "workload_hash": "16806a1f49c5d0f1c8779ea9ffa50123dac81c61f20b295f5a781fdd991b7750"
+}

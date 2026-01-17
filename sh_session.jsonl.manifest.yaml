@@ -1,27 +1,27 @@
-iwc_version: 0.1.0
+iwc_version: 0.1.1
 compiler: sharegpt
-generated_at_utc: '2025-12-27T08:31:14Z'
+generated_at_utc: '2026-01-16T21:53:47Z'
 input:
-  path: sharegpt_sample.json
-  sha256: 8084dd1b3a1f50a9b14cd2cdcf52dfc0931cc0c7ffb5b3fcad073e295d2f3524
+  path: sharegpt_multiturn.json
+  sha256: dd451e75a06b12e524e985a2e81a1054cb6ea39e51312131ad356e44c277988d
 output:
   path: sh_session.jsonl
-  sha256: 812b0e87f9fb4d903181af0793d9684a59fcd255d8647c20dd0a007910727ef5
+  sha256: a5db2453bdfc60625a4dc04ca4f580b8369887e6f1c12ab0828d1660b0898919
 schema:
-  path: /home/cc/iwc/schema/workload.schema.json
-  sha256: fe139140d24117cdb94b50e76b092d0b4f322f722aaa9b9f894ad55f5bc776bc
+  path: schema/workload.schema.json
+  sha256: 68df61589e0f99f7a2d085220d1110c5f20e737aba4f99877cabe76fe6e21f03
 summary:
-  num_requests: 2
-  arrival_span_ms: 100
+  num_requests: 3
+  arrival_span_ms: 200
   skipped_records: 0
   mode: session
+  emission: assistant-turn
 config:
   mode: session
   user_tag: User
   assistant_tag: Assistant
-  separator: '
-
-    '
+  separator: \n
+  prompt_format: text
   max_output_tokens: 128
   temperature: 0.0
   top_p: 1.0
