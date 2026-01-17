@@ -68,7 +68,7 @@ def compile_jsonl_prompts(
     manifest_path: Path,
     cfg: SimpleJsonConfig,
     *,
-    prompt_format: str = "text",
+    prompt_format: str = "raw",
 ) -> None:
     rows = _load_prompts_jsonl(input_path)
     n = len(rows)
@@ -239,7 +239,7 @@ def compile_simple_json(
     manifest_path: Path,
     cfg: SimpleJsonConfig,
     *,
-    prompt_format: str = "text",
+    prompt_format: str = "raw",
 ) -> None:
     rows = _load_simple_json(input_path)
     n = len(rows)
@@ -302,7 +302,7 @@ class ShareGPTConfig:
     assistant_tag: str = "Assistant"
     separator: str = "\n"
 
-    prompt_format: str = "text"
+    prompt_format: str = "raw"
 
     max_output_tokens: int = 128
     temperature: float = 0.0
