@@ -35,4 +35,11 @@ def test_diff_golden_session_vs_cumulative() -> None:
     got = diff_to_dict(d, a_label=str(a), b_label=str(b))
     exp = _load_json(golden)
 
-    assert got == exp
+    # Labels are environment-specific (absolute paths differ on CI vs local),
+# so don't snapshot-test them.
+got.pop("a_label", None)
+got.pop("b_label", None)
+exp.pop("a_label", None)
+exp.pop("b_label", None)
+
+assert got == exp
