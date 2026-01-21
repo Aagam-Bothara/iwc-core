@@ -1,0 +1,49 @@
+{
+  "errors": {},
+  "latency_ms": {
+    "max": 21,
+    "mean": 18.5,
+    "min": 16,
+    "p50": 18.5,
+    "p90": 20.5,
+    "p95": 20.75,
+    "p99": 20.95
+  },
+  "metadata": {
+    "models": [
+      "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    ],
+    "runner_version": "0.1.1",
+    "schema_version": "1.0.0",
+    "servers": [
+      "http://localhost:8000"
+    ]
+  },
+  "overview": {
+    "duration_s": 0.527,
+    "failed_requests": 0,
+    "retried_requests": 0,
+    "retry_rate": 0.0,
+    "success_rate": 1.0,
+    "successful_requests": 2,
+    "total_requests": 2
+  },
+  "quality": {
+    "truncated_requests": 0,
+    "truncation_rate": 0.0
+  },
+  "throughput": {
+    "input_tokens_per_sec": 36.05313092979127,
+    "output_tokens_per_sec": 3.795066413662239,
+    "requests_per_sec": 3.795066413662239,
+    "total_tokens_per_sec": 39.848197343453506
+  },
+  "tokens": {
+    "mean_input": 9.5,
+    "mean_output": 1,
+    "total": 21,
+    "total_input": 19,
+    "total_output": 2
+  },
+  "ttft_ms": null
+}
