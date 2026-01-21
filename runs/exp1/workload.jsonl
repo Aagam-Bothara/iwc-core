@@ -1,0 +1,2 @@
+{"arrival_time_ms":0,"max_output_tokens":128,"prompt":"Explain KV cache in one sentence.","prompt_format":"raw","request_id":"req-000001","semantic":{"tags":["sharegpt","session","turn-level"],"task":"chat"},"session_id":"conv-000001","streaming":false,"temperature":0.0,"top_p":1.0}
+{"arrival_time_ms":510,"max_output_tokens":128,"prompt":"Write a haiku about GPUs.","prompt_format":"raw","request_id":"req-000002","semantic":{"tags":["sharegpt","session","turn-level"],"task":"chat"},"session_id":"conv-000002","streaming":false,"temperature":0.0,"top_p":1.0}
