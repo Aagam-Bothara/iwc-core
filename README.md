@@ -102,6 +102,28 @@ iwc report-results --input results.jsonl
 
 ---
 
+## Experiments
+
+### Experiment 1 — Concurrency Sweep
+
+A baseline experiment measuring how latency scales with concurrency.
+
+| Concurrency | Mean (ms) | P50 (ms) | P99 (ms) | Req/s |
+|-------------|-----------|----------|----------|-------|
+| 1           | 64.50     | 64.50    | 110.07   | 3.78  |
+| 2           | 18.50     | 18.50    | 19.97    | 3.78  |
+| 4           | 18.50     | 18.50    | 20.95    | 3.80  |
+| 8           | 19.00     | 19.00    | 20.96    | 3.79  |
+| 16          | 16.00     | 16.00    | 16.98    | 3.80  |
+
+**Setup:** TinyLlama-1.1B on vLLM, Poisson arrivals at 2 RPS, seed 42.
+
+**Key finding:** Sequential execution (c=1) shows 3-4x higher latency. Parallelism beyond c=2 yields diminishing returns for this workload.
+
+See [`runs/exp1/`](runs/exp1/) for full results, plots, and reproduction scripts.
+
+---
+
 ## Architecture
 
 IWC decouples inference benchmarking into discrete stages:
