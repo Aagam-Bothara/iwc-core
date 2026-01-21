@@ -1,0 +1,32 @@
+iwc_version: 0.1.1
+compiler: sharegpt
+generated_at_utc: '2026-01-21T04:03:51Z'
+input:
+  path: sharegpt_sample.json
+  sha256: 8084dd1b3a1f50a9b14cd2cdcf52dfc0931cc0c7ffb5b3fcad073e295d2f3524
+output:
+  path: runs/exp1/workload.jsonl
+  sha256: 49f1d79554d7398630f130c28ff87bbcb6d784867e9becbf3c2fb5026ffd4790
+schema:
+  path: schema/workload.schema.json
+  sha256: 68df61589e0f99f7a2d085220d1110c5f20e737aba4f99877cabe76fe6e21f03
+summary:
+  num_requests: 2
+  arrival_span_ms: 510
+  skipped_records: 0
+  mode: single-turn
+  emission: assistant-turn
+config:
+  mode: single-turn
+  user_tag: User
+  assistant_tag: Assistant
+  separator: \n
+  prompt_format: raw
+  max_output_tokens: 128
+  temperature: 0.0
+  top_p: 1.0
+  streaming: false
+  arrival: poisson
+  arrival_step_ms: 100
+  rate_rps: 2.0
+  seed: 42
